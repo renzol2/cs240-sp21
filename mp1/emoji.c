@@ -6,14 +6,18 @@
 // Return your favorite emoji.
 // (This should really be your favorite one, we may use this later in the semester. :))
 const char *emoji_favorite() {
-  return "";
+  return "\xF0\x9f\xA4\x98";
 }
 
 
 // Count the number of emoji in the UTF-8 string `utf8str`, returning the count.  You should
 // consider everything in the ranges starting from (and including) U+1F000 up to (and including) U+1F9FF.
 int emoji_count(char *utf8str) {
-  return 0;
+  int count = 0;
+  for (int i = 0; i < strlen(utf8str); i++) {
+    printf(utf8str[i]);
+  }
+  return count;
 }
 
 
