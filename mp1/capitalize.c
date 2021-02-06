@@ -9,7 +9,7 @@ int isLowercase(char c) {
   return c >= 'a' && c <= 'z';
 }
 
-void makeLowercase(char* c) {
+void makeUppercase(char* c) {
   *c -= CASE_DISTANCE;
 }
 
@@ -19,7 +19,7 @@ void capitalize(char *s) {
   char first = s[0];
   // if lowercase
   if (isLowercase(first)) {
-    makeLowercase(&first);
+    makeUppercase(&first);
   }
 }
 
@@ -29,7 +29,7 @@ void capitalize(char *s) {
 void capitalizeAll(char *s) {
   for (int i = 0; i < strlen(s); i++) {
     if (isLowercase(s[i])) {
-      makeLowercase(&s[i]);
+      makeUppercase(&s[i]);
     }
   }
 }
