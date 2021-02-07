@@ -68,7 +68,6 @@ void part3() {
   const char *fav = emoji_favorite();
   printf("emoji_favorite: %s\n", fav);
 
-
   int ct;
   strcpy(s, "hi\xF0\x9F\x8E\x89");
   ct = emoji_count(s);
@@ -78,38 +77,37 @@ void part3() {
   ct = emoji_count(s);
   printf("emoji_count: \"%s\" -> %d\n", s, ct);
 
-
   strcpy(s, "\xF0\x9F\x98\x8A");
   printf("emoji_invertChar: \"%s\" -> ", s);
   emoji_invertChar(s);
   printf("\"%s\"\n", s);
 
-  strcpy(s, "\xF0\x9F\x92\x96 \xF0\x9F\x92\xBB \xF0\x9F\x8E\x89 \xF0\x9F\x98\x8A");
+  strcpy(s,
+         "\xF0\x9F\x92\x96 \xF0\x9F\x92\xBB \xF0\x9F\x8E\x89 \xF0\x9F\x98\x8A "
+         "\xF0\x9F\x90\xB6 \xF0\x9F\x8C\x9E");
   printf("emoji_invertAll: \"%s\" -> ", s);
   emoji_invertAll(s);
   printf("\"%s\"\n", s);
 
-
   for (int i = 0; i < 10; i++) {
     char *s_alloc = emoji_random_alloc();
-    printf("emoji_radnom_alloc (#%d): \"%s\"", (i+1), s_alloc);
+    printf("emoji_radnom_alloc (#%d): \"%s\"", (i + 1), s_alloc);
     free(s_alloc);
   }
 
   free(s);
 }
 
-
 int main() {
-  #ifdef PART1
+#ifdef PART1
   part1();
-  #endif /* PART1 */
+#endif /* PART1 */
 
-  #ifdef PART2
+#ifdef PART2
   part2();
-  #endif /* PART2 */
+#endif /* PART2 */
 
-  #ifdef PART3
+#ifdef PART3
   part3();
-  #endif /* PART3 */
+#endif /* PART3 */
 }
