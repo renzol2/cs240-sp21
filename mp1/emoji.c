@@ -2,6 +2,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+const int LEADING_F = 0xffffff00;
+const int EMOJI_BYTE1 = 0xf0;
+const int EMOJI_BYTE2 = 0x9f;
+const int EMOJI_BYTE3_LOW = 0x80;
+const int EMOJI_BYTE4_LOW = 0x80;
+const int EMOJI_BYTE3_HIGH = 0xa7;
+const int EMOJI_BYTE4_HIGH = 0xbf;
+ 
 /**
  * Checks if `c` signifies a 4-byte UTF-8 encoded character
  * Returns 1 if true, 0 if false
@@ -79,23 +87,26 @@ const char *emoji_favorite() { return "\xF0\x9f\xA4\x98"; }
 int emoji_count(char *utf8str) {
   char *s = utf8str;
   int count = 0;
-  int lowerBound = 0b1111000000000000;   // U+1F000
-  int higherBound = 0b1111100111111111;  // U+1F9FF
   int length = strlen(s);
   for (int i = 0; i < length; i++) {
     // If first character is UTF-8 4 bytes and there are 4 bytes left
     if (isUtf8Prefix(s[i]) && i < length - 3) {
       // Get next 3 bytes
-      int byte1 = s[i];
-      int byte2 = s[i + 1];
-      int byte3 = s[i + 2];
-      int byte4 = s[i + 3];
+      int byte1 = (s[i] - LEADING_F);
+      int byte2 = (s[i + 1] - LEADING_F);
+      int byte3 = (s[i + 2] - LEADING_F);
+      int byte4 = (s[i + 3] - LEADING_F);
 
-      // Construct UTF-8 character from bytes
-      int utf8char = byte4 + byte3 << 4 + byte2 << 8 + byte1 << 12;
+      // Lower bound encoded:
+      // f0 9f 80 80
+      // Higher bound encoded:
+      // f0 9f a7 bf
+      int inRange = (byte1 == EMOJI_BYTE1) && (byte2 == EMOJI_BYTE2);
+      int charIsGeqLow = (byte3 >= EMOJI_BYTE3_LOW) && (byte4 >= EMOJI_BYTE4_LOW);
+      int charIsLeqHigh = (byte3 <= EMOJI_BYTE3_HIGH) && (byte4 <= EMOJI_BYTE4_HIGH);
 
-      // Check if character is within range
-      if (utf8char >= lowerBound || utf8char <= higherBound) {
+      // If UTF-8 char is in range
+      if (inRange && charIsGeqLow && charIsLeqHigh) {
         count++;
       }
     }
@@ -147,8 +158,11 @@ void emoji_invertAll(char *utf8str) {
 
 // Return a random emoji stored in new heap memory you have allocated.
 char *emoji_random_alloc() {
-  srand(time(0));
-  printf("%d\n", rand());
-  char* c = malloc(sizeof(char));
+  int BYTES_PER_EMOJI = 4;
+  char *c = malloc(BYTES_PER_EMOJI);
+  c[0] = EMOJI_BYTE1;
+  c[1] = EMOJI_BYTE2;
+  c[2] = rand() % (EMOJI_BYTE3_HIGH - EMOJI_BYTE3_LOW) + EMOJI_BYTE3_LOW;
+  c[3] = rand() % (EMOJI_BYTE4_HIGH - EMOJI_BYTE4_LOW) + EMOJI_BYTE4_LOW;
   return c;
 }
