@@ -28,7 +28,7 @@ int main(int argc, char *argv[]) {
   printf("PNG Header: OK\n");
 
   PNGChunk *uiuc = NULL;
-  char uiucName[5] = "uiuc";
+  char uiucName[5] = "kura";
 
   // Read chunks until reaching "IEND" or in invalid chunk:
   while (1) {
