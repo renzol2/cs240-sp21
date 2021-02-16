@@ -45,7 +45,7 @@ int main(int argc, char *argv[]) {
     if (isAfterIHDR) {
       // TODO: put the gif inside
       // Create new chunk
-      PNGChunk* gifChunk;
+      PNGChunk* gifChunk = malloc(sizeof(PNGChunk));
       
       // Get the file size
       fseek(gifFile, 0, SEEK_END);
@@ -54,12 +54,12 @@ int main(int argc, char *argv[]) {
 
       // Create copy of data
       char* buffer = malloc(sizeof(char) * gifSize);
-      size_t result = fread(buffer, 1, gifSize, gifFile);
+      fread(buffer, 1, gifSize, gifFile);
 
       // Put gif data inside chunk
       gifChunk->data = buffer;
       gifChunk->len = gifSize;
-      strcpy(gifChunk->type, "kura");
+      strcpy(gifChunk->type, "uiuc");
 
       // Write new chunk into png
       size_t gifChunkBytesWritten = PNGChunk_writeChunk(newPng, gifChunk);
