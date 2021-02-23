@@ -7,6 +7,12 @@
 #include <string.h>
 #include <unistd.h>
 
+typedef struct _metadata_t {
+  /** Size of the memory block */
+  unsigned int size;
+  /** 0 if block is free, 1 if block is used. */
+  unsigned char isUsed;
+} metadata_t;
 
 /**
  * Allocate space for array in memory
@@ -31,11 +37,35 @@
  *
  * @see http://www.cplusplus.com/reference/clibrary/cstdlib/calloc/
  */
-void *calloc(size_t num, size_t size) {
-    // implement calloc:
-    return NULL;
+void* calloc(size_t num, size_t size) {
+  // implement calloc:
+  return NULL;
 }
 
+void* startOfHeap = NULL;
+/**
+ * Prints the heap
+ */
+void printHeap() {
+  // If we have not recorded the start of the heap, record it
+  if (startOfHeap == NULL) {
+    startOfHeap = sbrk(0);  // returns end of heap without increasing
+  }
+
+  // FIXME: Print out data about each metadata chunk:
+  metadata_t* currentMeta = startOfHeap;
+  void* endOfHeap = sbrk(0);
+  printf("-- Start of Heap (%p) --\n", startOfHeap);
+
+  while ((void*)currentMeta < endOfHeap) {
+    printf(" metadata for memory %p: (%p, size=%d, isUsed=%d)\n",
+           (void*)currentMeta + sizeof(metadata_t), currentMeta,
+           currentMeta->size, currentMeta->isUsed);
+    currentMeta = (void*)currentMeta + currentMeta->size + sizeof(metadata_t);
+  }
+  printf("-- End of Heap (%p) --\n\n", endOfHeap);
+
+}
 
 /**
  * Allocate memory block
@@ -58,13 +88,20 @@ void *calloc(size_t num, size_t size) {
  *
  * @see http://www.cplusplus.com/reference/clibrary/cstdlib/malloc/
  */
-void *malloc(size_t size) {
-    // implement malloc:
-    fprintf(stderr, "Inside malloc\n");  // You'll eventually want to remove this.
+void* malloc(size_t size) {
+  // FIXME: only prints, remove if necessary
+  printf("Inside: malloc(%lu):\n", size);
+  
+  printHeap();
 
-    return NULL;
+  // Allocate heap memory for the metadata structure and populate the variables.
+  metadata_t* meta = sbrk(sizeof(metadata_t));
+  meta->size = size;
+  meta->isUsed = 1;
+
+  void* ptr = sbrk(size);
+  return ptr;
 }
-
 
 /**
  * Deallocate space in memory
@@ -82,10 +119,15 @@ void *malloc(size_t size) {
  *    calloc() or realloc() to be deallocated.  If a null pointer is
  *    passed as argument, no action occurs.
  */
-void free(void *ptr) {
-    // implement free:
-}
+void free(void* ptr) {
+  if (ptr == NULL) return;
+  printf("Inside: free(%p)\n", ptr);
+  // Find the metadata located immediately before `ptr`:
+  metadata_t* meta = ptr - sizeof(metadata_t);
 
+  // Mark the allocation as free
+  meta->isUsed = 0;
+}
 
 /**
  * Reallocate memory block
@@ -132,7 +174,7 @@ void free(void *ptr) {
  *
  * @see http://www.cplusplus.com/reference/clibrary/cstdlib/realloc/
  */
-void *realloc(void *ptr, size_t size) {
-    // implement realloc:
-    return NULL;
+void* realloc(void* ptr, size_t size) {
+  // implement realloc:
+  return NULL;
 }
