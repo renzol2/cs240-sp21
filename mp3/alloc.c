@@ -244,6 +244,20 @@ void free(void* ptr) {
  * @see http://www.cplusplus.com/reference/clibrary/cstdlib/realloc/
  */
 void* realloc(void* ptr, size_t size) {
+  // FIXME: unsure if correct
   // implement realloc:
-  return NULL;
+  if (ptr == NULL) {
+    return malloc(size);
+  } else if (size == 0 && ptr != NULL) {
+    free(ptr);
+    return NULL;
+  }
+  
+  void* contents;
+  memcpy(contents, ptr, size);
+
+  free(ptr);
+  void* location = malloc(size);
+  memcpy(location, contents, size);
+  return location;
 }
