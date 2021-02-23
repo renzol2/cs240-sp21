@@ -14,6 +14,58 @@ typedef struct _metadata_t {
   unsigned char isUsed;
 } metadata_t;
 
+/** Global variable to keep track of start of heap */
+void* startOfHeap = NULL;
+
+/**
+ * Prints the heap
+ */
+void printHeap() {
+  // If we have not recorded the start of the heap, record it
+  if (startOfHeap == NULL) {
+    startOfHeap = sbrk(0);  // returns end of heap without increasing
+  }
+
+  metadata_t* currentMeta = startOfHeap;
+  void* endOfHeap = sbrk(0);
+  printf("-- Start of Heap (%p) --\n", startOfHeap);
+
+  while ((void*)currentMeta < endOfHeap) {
+    printf(" metadata for memory %p: (%p, size=%d, isUsed=%d)\n",
+           (void*)currentMeta + sizeof(metadata_t), currentMeta,
+           currentMeta->size, currentMeta->isUsed);
+    currentMeta = (void*)currentMeta + currentMeta->size + sizeof(metadata_t);
+  }
+  printf("-- End of Heap (%p) --\n\n", endOfHeap);
+}
+
+/**
+ * Coalesces (combines) adjacent blocks of memory
+ */
+void coalesceMemory() {
+  printf("Inside: coalesceMemory\n");
+  if (startOfHeap == NULL) {
+    startOfHeap = sbrk(0);  // returns end of heap without increasing
+  }
+
+  metadata_t* currentMeta = startOfHeap;
+  metadata_t* prevMeta = startOfHeap;
+  void* endOfHeap = sbrk(0);
+
+  while ((void*)currentMeta < endOfHeap) {
+    // Get current meta to next memory chunk
+    currentMeta = (void*)currentMeta + currentMeta->size + sizeof(metadata_t);
+
+    // Check if both prev and current are free
+    if (currentMeta->isUsed == 0 && prevMeta->isUsed == 0) {
+      // Join together
+      prevMeta->size = prevMeta->size + sizeof(metadata_t) + currentMeta->size;
+    }
+
+    prevMeta = currentMeta;
+  }
+}
+
 /**
  * Allocate space for array in memory
  *
@@ -42,31 +94,6 @@ void* calloc(size_t num, size_t size) {
   return NULL;
 }
 
-void* startOfHeap = NULL;
-/**
- * Prints the heap
- */
-void printHeap() {
-  // If we have not recorded the start of the heap, record it
-  if (startOfHeap == NULL) {
-    startOfHeap = sbrk(0);  // returns end of heap without increasing
-  }
-
-  // FIXME: Print out data about each metadata chunk:
-  metadata_t* currentMeta = startOfHeap;
-  void* endOfHeap = sbrk(0);
-  printf("-- Start of Heap (%p) --\n", startOfHeap);
-
-  while ((void*)currentMeta < endOfHeap) {
-    printf(" metadata for memory %p: (%p, size=%d, isUsed=%d)\n",
-           (void*)currentMeta + sizeof(metadata_t), currentMeta,
-           currentMeta->size, currentMeta->isUsed);
-    currentMeta = (void*)currentMeta + currentMeta->size + sizeof(metadata_t);
-  }
-  printf("-- End of Heap (%p) --\n\n", endOfHeap);
-
-}
-
 /**
  * Allocate memory block
  *
@@ -89,7 +116,7 @@ void printHeap() {
  * @see http://www.cplusplus.com/reference/clibrary/cstdlib/malloc/
  */
 void* malloc(size_t size) {
-  // FIXME: only prints, remove if necessary
+  // FIXME: remove if necessary
   printf("Inside: malloc(%lu):\n", size);
   
   printHeap();
@@ -127,6 +154,7 @@ void free(void* ptr) {
 
   // Mark the allocation as free
   meta->isUsed = 0;
+  coalesceMemory();
 }
 
 /**
