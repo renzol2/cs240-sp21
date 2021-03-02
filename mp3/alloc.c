@@ -23,7 +23,7 @@ typedef struct _metadata_t {
 /** Global variable to keep track of start of heap */
 void* startOfHeap = NULL;
 /** 1 to print, 0 to not print */
-int allowPrinting = 1;
+int allowPrinting = 0;
 /** Head of free list */
 metadata_t* head = NULL;
 /** Tail of free list */
