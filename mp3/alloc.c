@@ -12,12 +12,22 @@ typedef struct _metadata_t {
   unsigned int size;
   /** 0 if block is free, 1 if block is used. */
   unsigned char isUsed;
+  /** Pointer to next free block */
+  struct _metadata_t* next;
+  /** Pointer to prev free block */
+  struct _metadata_t* prev;
+  /** Pointer to previous block in heap (free or not) */
+  struct _metadata_t* heapPrev;
 } metadata_t;
 
 /** Global variable to keep track of start of heap */
 void* startOfHeap = NULL;
 /** 1 to print, 0 to not print */
-int allowPrinting = 0;
+int allowPrinting = 1;
+/** Head of free list */
+metadata_t* head = NULL;
+/** Tail of free list */
+metadata_t* tail = NULL;
 
 /**
  * Prints the heap
@@ -41,6 +51,18 @@ void printHeap() {
     currentMeta = (void*)currentMeta + currentMeta->size + sizeof(metadata_t);
   }
   if (allowPrinting) printf("-- End of Heap (%p) --\n\n", endOfHeap);
+}
+
+void printFreeList() {
+  metadata_t* currentMeta = head;
+  printf("-- Start of free list --\n");
+  while (currentMeta != NULL) {
+    printf(" metadata for memory %p: (%p, size=%d)\n",
+           (void*)currentMeta + sizeof(metadata_t), currentMeta,
+           currentMeta->size);
+    currentMeta = currentMeta->next;
+  }
+  printf("-- End of free list --\n\n");
 }
 
 /**
@@ -100,6 +122,58 @@ void* calloc(size_t num, size_t size) {
   return ptr;
 }
 
+void* mallocExplicit(size_t size) {
+  // Traverse through free list
+  metadata_t* current = head;
+  metadata_t* previous = current;
+  while (current != NULL) {
+    // Check if current has enough space for requested size
+    if (current->size >= size) {
+      // Split block if necessary
+      int sizeDiff = current->size - size;
+      // If I'm able to split
+      if (sizeDiff > sizeof(metadata_t)) {
+        metadata_t* split = (void*)current + sizeof(metadata_t) + size;
+        split->isUsed = 0;
+
+        // Transfer pointers
+        split->next = current->next;
+        split->prev = current->prev;
+        split->size = sizeDiff - sizeof(metadata_t);
+        current->size = size;
+      }
+
+      // Set current block to in use
+      current->isUsed = 1;
+      if (current->prev != NULL) {
+        current->prev->next = current->next;
+      }
+      if (current->next != NULL) {
+        current->next->prev = current->prev;
+      }
+      
+      // Return the location of the current block
+      return (void*)current + sizeof(metadata_t);
+    } else {
+      // If block isn't big enough, go to next free block
+      previous = current;
+      current = current->next;
+    }
+  }
+
+  metadata_t* meta = sbrk(sizeof(metadata_t));
+  meta->size = size;
+  meta->isUsed = 1;
+  meta->prev = NULL;
+  meta->next = NULL;
+  meta->heapPrev = previous;  // can be free or not
+
+  if (allowPrinting) printFreeList();
+
+  void* ptr = sbrk(size);
+  return ptr;
+}
+
 /**
  * Allocate memory block
  *
@@ -122,53 +196,11 @@ void* calloc(size_t num, size_t size) {
  * @see http://www.cplusplus.com/reference/clibrary/cstdlib/malloc/
  */
 void* malloc(size_t size) {
-  if (allowPrinting) printf("Inside: malloc(%lu):\n", size);
-
-  // Traverse memory blocks to find the first large enough free block
-  if (startOfHeap == NULL) {
-    startOfHeap = sbrk(0);  // returns end of heap without increasing
+  if (allowPrinting) {
+    printf("Inside: malloc(%lu):\n", size);
+    printHeap();
   }
-
-  metadata_t* currentMeta = startOfHeap;
-  void* endOfHeap = sbrk(0);
-
-  while ((void*)currentMeta < endOfHeap) {
-    // If current block is unused and is geq requested size
-    // FIXME: keep account of space required for metadata?
-    if (currentMeta->isUsed == 0 &&
-        currentMeta->size >= size + 0) {
-      // Split block if necessary
-      int sizeDiff = currentMeta->size - size;
-      if (sizeDiff > 0) {
-        metadata_t* newMeta = (void*)currentMeta + sizeof(metadata_t) + size;
-        newMeta->isUsed = 0;
-        newMeta->size = sizeDiff - sizeof(metadata_t);
-        currentMeta->size = size;
-      }
-
-      // Set current block to in use
-      currentMeta->isUsed = 1;
-
-      printHeap();
-
-      // Return position of memory (right after metadata)
-      void* ptr = currentMeta + sizeof(metadata_t);
-      return ptr;
-    } else {
-      // Continue to next memory block
-      currentMeta = (void*)currentMeta + currentMeta->size + sizeof(metadata_t);
-    }
-  }
-
-  // Allocate heap memory for the metadata structure and populate the variables.
-  metadata_t* meta = sbrk(sizeof(metadata_t));
-  meta->size = size;
-  meta->isUsed = 1;
-
-  printHeap();
-
-  void* ptr = sbrk(size);
-  return ptr;
+  return mallocExplicit(size);
 }
 
 /**
@@ -189,13 +221,59 @@ void* malloc(size_t size) {
  */
 void free(void* ptr) {
   if (ptr == NULL) return;
-  if (allowPrinting) printf("Inside: free(%p)\n", ptr);
+  if (allowPrinting) {
+    printf("Inside: free(%p)\n", ptr);
+  } 
+    
   // Find the metadata located immediately before `ptr`:
   metadata_t* meta = ptr - sizeof(metadata_t);
 
   // Mark the allocation as free
   meta->isUsed = 0;
-  coalesceMemory();
+
+  // Add to free list
+  if (tail != NULL) {
+    tail->next = meta;
+  }
+  meta->prev = tail;
+  meta->next = NULL;
+  tail = meta;
+
+  if (head == NULL) {
+    meta->prev = NULL; 
+    head = meta;
+  }
+
+  // Coalesce memory
+  metadata_t* current = head;
+  while (current != NULL) {
+    // Get the previous and next metadata
+    metadata_t* previous = current->heapPrev;
+    metadata_t* next = (void*)current + sizeof(metadata_t) + current->size;
+
+    if (next != NULL && next->isUsed == 0) {
+      current->size = current->size + sizeof(metadata_t) + next->size; 
+      next->size = 0;
+      next->prev = NULL;
+      next->next = NULL;
+      next->heapPrev = NULL;
+    }
+
+    if (previous != NULL && previous->isUsed == 0) {
+      current->size = current->size + sizeof(metadata_t) + previous->size;
+      previous->size = 0;
+      previous->prev = NULL;
+      previous->next = NULL;
+      previous->heapPrev = NULL;
+    }
+
+    current = current->next;
+  }
+
+  if (allowPrinting) {
+    printFreeList();
+  }
+
 }
 
 /**
@@ -252,7 +330,7 @@ void* realloc(void* ptr, size_t size) {
     free(ptr);
     return NULL;
   }
-  
+
   void* contents;
   memcpy(contents, ptr, size);
 
