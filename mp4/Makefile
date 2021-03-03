@@ -1,7 +1,7 @@
 CC = gcc
 INC = -I.
 FLAGS = -W -Wall -g
-LINKOPTS = -lpthread
+LINKOPTS = -pthread
 
 all: msort gen
 
