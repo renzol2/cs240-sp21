@@ -5,23 +5,82 @@
 #include <string.h>
 
 typedef struct _sort_params {
+  int* arrayToSort;
   int sortLength;
   int startIndex;
-  int* arrayToSort;
 } sort_params;
 
+typedef struct _merge_params {
+  int* arr;
+  int segmentIndex1;
+  int segmentIndex2;
+  int segmentLength1;
+  int segmentLength2;
+} merge_params;
+
+/**
+ * Returns the difference of a and b
+ */
 int compare(const void* a, const void* b) { return (*(int*)a - *(int*)b); }
 
+/**
+ * Sorts a segment with given `sort_params`
+ */
 void* sortSegment(void* ptr) {
-  sort_params parameters = *((sort_params*)ptr);
-  printf("Sorting at index %d with length %d\n", parameters.startIndex,
-         parameters.sortLength);
+  sort_params p = *((sort_params*)ptr);
   // Sort the array with given index + length
-  qsort(parameters.arrayToSort + parameters.startIndex, parameters.sortLength,
-        sizeof(int), compare);
+  qsort(p.arrayToSort + p.startIndex, p.sortLength, sizeof(int), compare);
+  fprintf(stderr, "Sorted %d elements.\n", p.sortLength);
   return NULL;
 }
 
+/**
+ * Merges two segments with given `merge_params`
+ * Assumes segment 1 is the "left" segment, i.e. lower index
+ */
+void* mergeSegments(void* ptr) {
+  merge_params p = *((merge_params*)ptr);
+  printf("Merging segment indices %d and %d with lengths %d and %d\n",
+         p.segmentIndex1, p.segmentIndex2, p.segmentLength1, p.segmentLength2);
+  // Create temporary lists of each array
+  int segment1[p.segmentLength1];
+  int segment2[p.segmentLength2];
+  for (int i = 0; i < p.segmentLength1; i++)
+    segment1[i] = p.arr[p.segmentIndex1 + i];
+  for (int i = 0; i < p.segmentLength2; i++)
+    segment2[i] = p.arr[p.segmentIndex2 + i];
+
+  // Merge two segments in the array
+  int* arr = p.arr;
+  int totalLength = p.segmentLength1 + p.segmentLength2;
+  int numDuplicates = 0;
+  int seg1Index = 0;
+  int seg2Index = 0;
+  // Starting from the original segment and into the adjacent segment
+  for (int i = p.segmentIndex1; i < totalLength; i++) {
+    int a = segment1[seg1Index];
+    int b = segment2[seg2Index];
+
+    // Compare the numbers
+    if (a < b) {
+      arr[i] = a;
+      seg1Index++;
+    } else if (a > b) {
+      arr[i] = b;
+      seg2Index++;
+    } else {
+      // TODO: count duplicates properly
+      numDuplicates++;
+    }
+  }
+
+  fprintf(stderr, "Merged %d and %d elements with %d duplicates.\n",
+          p.segmentLength1, p.segmentLength2, numDuplicates);
+}
+
+/**
+ * CS 240 MP4
+ */
 int main(int argc, char** argv) {
   if (argc != 2) {
     printf("Usage: ./msort [NUM SEGMENTS] <[FILE]\n");
@@ -100,8 +159,8 @@ int main(int argc, char** argv) {
     pthread_join(threads[i], NULL);
   }
 
-  // Begin merging segments
-  
+  // TODO: Begin merging segments
+  int currentNumSegments = numSegments;
 
   // Print array
   for (int i = 0; i < numElements; i++) {
