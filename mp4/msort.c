@@ -4,23 +4,25 @@
 #include <stdlib.h>
 #include <string.h>
 
-// The number of elements to sort in thread function
-int sortLength;
-int* arrayToSort;
+typedef struct _sort_params {
+  int sortLength;
+  int startIndex;
+  int* arrayToSort;
+} sort_params;
 
-int compare(const void * a, const void * b) {
-   return ( *(int*)a - *(int*)b );
-}
+int compare(const void* a, const void* b) { return (*(int*)a - *(int*)b); }
 
 void* sortSegment(void* ptr) {
-  printf("Start sortSegment\n");
-  int startIndex = *((int*)ptr);
-  printf("Thread started with value: %d\n", startIndex);
-  qsort(arrayToSort + startIndex, sortLength, sizeof(int), compare);
+  sort_params parameters = *((sort_params*)ptr);
+  printf("Sorting at index %d with length %d\n", parameters.startIndex,
+         parameters.sortLength);
+  // Sort the array with given index + length
+  qsort(parameters.arrayToSort + parameters.startIndex, parameters.sortLength,
+        sizeof(int), compare);
   return NULL;
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   if (argc != 2) {
     printf("Usage: ./msort [NUM SEGMENTS] <[FILE]\n");
     return 1;
@@ -81,13 +83,16 @@ int main(int argc, char **argv) {
 
   // Launch threads to sort
   pthread_t threads[numSegments];
-  int startIndices[numSegments];
+  sort_params parameters[numSegments];
   for (int i = 0; i < numSegments; i++) {
-    // TODO: change sort size for last segment if uneven
-    sortLength = valuesPerSegment;
-    arrayToSort = arr;
-    startIndices[i] = i * valuesPerSegment;
-    pthread_create(&threads[i], NULL, sortSegment, (void*)&(startIndices[i]));
+    if (i == numSegments - 1 && hasLeftover) {
+      parameters[i].sortLength = leftover;
+    } else {
+      parameters[i].sortLength = valuesPerSegment;
+    }
+    parameters[i].startIndex = i * valuesPerSegment;
+    parameters[i].arrayToSort = arr;
+    pthread_create(&threads[i], NULL, sortSegment, (void*)&(parameters[i]));
   }
 
   // Join threads
@@ -95,11 +100,14 @@ int main(int argc, char **argv) {
     pthread_join(threads[i], NULL);
   }
 
+  // Begin merging segments
+  
+
   // Print array
   for (int i = 0; i < numElements; i++) {
     printf("arr[%d]: %d\n", i, arr[i]);
   }
-  
+
   free(arr);
-	return 0;
+  return 0;
 }
