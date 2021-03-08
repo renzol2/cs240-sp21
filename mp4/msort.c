@@ -51,31 +51,37 @@ void* mergeSegments(void* ptr) {
     segment2[i] = p.arr[p.segmentIndex2 + i];
 
   // Merge two segments in the array
-  int* arr = p.arr;
   int totalLength = p.segmentLength1 + p.segmentLength2;
   int numDuplicates = 0;
   int seg1Index = 0;
   int seg2Index = 0;
   // Starting from the original segment and into the adjacent segment
-  for (int i = p.segmentIndex1; i < totalLength; i++) {
+  for (int i = p.segmentIndex1; i < p.segmentIndex1 + totalLength; i++) {
     int a = segment1[seg1Index];
     int b = segment2[seg2Index];
 
+    // printf("a: %d, b: %d\n", a, b);
+
     // Compare the numbers
     if (a < b) {
-      arr[i] = a;
+      p.arr[i] = a;
       seg1Index++;
     } else if (a > b) {
-      arr[i] = b;
+      p.arr[i] = b;
       seg2Index++;
     } else {
       // TODO: count duplicates properly
       numDuplicates++;
+      // Advance one of the lists
+      p.arr[i] = a;
+      seg1Index++;
     }
+    // printf("in merge, arr[%d]: %d\n", i, p.arr[i]);
   }
 
   fprintf(stderr, "Merged %d and %d elements with %d duplicates.\n",
           p.segmentLength1, p.segmentLength2, numDuplicates);
+  return NULL;
 }
 
 /**
@@ -141,26 +147,75 @@ int main(int argc, char** argv) {
   int hasLeftover = leftover == valuesPerSegment ? 0 : 1;
 
   // Launch threads to sort
-  pthread_t threads[numSegments];
-  sort_params parameters[numSegments];
+  pthread_t sortThreads[numSegments];
+  sort_params sortParams[numSegments];
   for (int i = 0; i < numSegments; i++) {
     if (i == numSegments - 1 && hasLeftover) {
-      parameters[i].sortLength = leftover;
+      sortParams[i].sortLength = leftover;
     } else {
-      parameters[i].sortLength = valuesPerSegment;
+      sortParams[i].sortLength = valuesPerSegment;
     }
-    parameters[i].startIndex = i * valuesPerSegment;
-    parameters[i].arrayToSort = arr;
-    pthread_create(&threads[i], NULL, sortSegment, (void*)&(parameters[i]));
+    sortParams[i].startIndex = i * valuesPerSegment;
+    sortParams[i].arrayToSort = arr;
+    pthread_create(&sortThreads[i], NULL, sortSegment, (void*)&(sortParams[i]));
   }
 
   // Join threads
   for (int i = 0; i < numSegments; i++) {
-    pthread_join(threads[i], NULL);
+    pthread_join(sortThreads[i], NULL);
   }
 
-  // TODO: Begin merging segments
+  // Print array
+  printf("\nAfter sorting:\n");
+  for (int i = 0; i < numElements; i++) {
+    printf("arr[%d]: %d\n", i, arr[i]);
+  }
+
+  // Begin merging segments
   int currentNumSegments = numSegments;
+  int currentSegmentLength = valuesPerSegment;
+  while (currentNumSegments > 1) {
+    int numMerges = currentNumSegments / 2;
+
+    pthread_t mergeThreads[numMerges];
+    merge_params mergeParams[numMerges];
+
+    // Create threads to merge segments
+    for (int i = 0; i < numMerges; i++) {
+      // Create params to sort
+      mergeParams[i].arr = arr;
+      mergeParams[i].segmentIndex1 = currentSegmentLength * (2 * i);
+      mergeParams[i].segmentIndex2 = currentSegmentLength * (2 * i + 1);
+      mergeParams[i].segmentLength1 = currentSegmentLength;
+      mergeParams[i].segmentLength2 =
+          currentSegmentLength;  // FIXME: check for leftover
+
+      printf(
+          "Merge params\n s1 index: %d\n s1 length: %d\n s2 index: %d\n s2 "
+          "length: %d\n",
+          mergeParams[i].segmentIndex1, mergeParams[i].segmentLength1,
+          mergeParams[i].segmentIndex2, mergeParams[i].segmentLength2);
+
+      // Launch thread
+      pthread_create(&mergeThreads[i], NULL, mergeSegments,
+                     (void*)&mergeParams[i]);
+    }
+
+    // Join merge threads
+    for (int i = 0; i < numMerges; i++) {
+      pthread_join(mergeThreads[i], NULL);
+      // Every merge decreases the # of segments by 1
+      currentNumSegments--;
+    }
+
+    // Update segment length
+    currentSegmentLength *= 2;
+
+    printf("\nAfter merge round:\n");
+    for (int i = 0; i < numElements; i++) {
+      printf("arr[%d]: %d\n", i, arr[i]);
+    }
+  }
 
   // Print array
   for (int i = 0; i < numElements; i++) {
