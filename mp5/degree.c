@@ -118,7 +118,7 @@ void *job_combine_research() {
 }
 
 void *job_graduation() {
-  // 🎓 requires 10x 📚 
+  // 🎓 requires 100x 📚 
   wallet_change_resource(&wallet, "books", -100);
   wallet_change_resource(&wallet, "degree!", 1);
   fprintf(stderr, "🎓");
