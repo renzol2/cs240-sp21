@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+int allowPrinting = 0;
+
 typedef struct _sort_params {
   int* arrayToSort;
   int sortLength;
@@ -40,17 +42,27 @@ void* sortSegment(void* ptr) {
  */
 void* mergeSegments(void* ptr) {
   merge_params p = *((merge_params*)ptr);
-  printf("Merging segment indices %d and %d with lengths %d and %d\n",
-         p.segmentIndex1, p.segmentIndex2, p.segmentLength1, p.segmentLength2);
+
+  if (allowPrinting) {
+    printf("Merging segment indices %d and %d with lengths %d and %d\n",
+          p.segmentIndex1, p.segmentIndex2, p.segmentLength1, p.segmentLength2);
+  }
+
   // Create temporary lists of each array
-  int segment1[p.segmentLength1];
-  int segment2[p.segmentLength2];
+  // int segment1[p.segmentLength1];
+  // int segment2[p.segmentLength2];
+  int* segment1 = malloc(sizeof(int) * p.segmentLength1);
+  int* segment2 = malloc(sizeof(int) * p.segmentLength2);
   for (int i = 0; i < p.segmentLength1; i++) {
-    printf("arr[%d]: %d\n", p.segmentIndex1 + i, p.arr[p.segmentIndex1 + i]);
+    if (allowPrinting) {
+      printf("arr[%d]: %d\n", p.segmentIndex1 + i, p.arr[p.segmentIndex1 + i]);
+    }
     segment1[i] = p.arr[p.segmentIndex1 + i];
   }
   for (int i = 0; i < p.segmentLength2; i++) {
-    printf("arr[%d]: %d\n", p.segmentIndex2 + i, p.arr[p.segmentIndex2 + i]);
+    if (allowPrinting) {
+      printf("arr[%d]: %d\n", p.segmentIndex2 + i, p.arr[p.segmentIndex2 + i]);
+    }
     segment2[i] = p.arr[p.segmentIndex2 + i];
   }
 
@@ -68,7 +80,9 @@ void* mergeSegments(void* ptr) {
     // True if we've finished everything in segment 2
     int endOfSegment2 = seg2Index == p.segmentLength2 ? 1 : 0;
 
-    printf("a: %d, b: %d, s1i: %d, s2i: %d\n", a, b, seg1Index, seg2Index);
+    if (allowPrinting) {
+      printf("a: %d, b: %d, s1i: %d, s2i: %d\n", a, b, seg1Index, seg2Index);
+    }
 
     // Compare the numbers
     if (endOfSegment1) {
@@ -99,11 +113,16 @@ void* mergeSegments(void* ptr) {
         seg1Index++;
       }
     }
-    printf("in merge, arr[%d]: %d\n", i, p.arr[i]);
+    
+    if (allowPrinting) {
+      printf("in merge, arr[%d]: %d\n", i, p.arr[i]);
+    }
   }
 
   fprintf(stderr, "Merged %d and %d elements with %d duplicates.\n",
           p.segmentLength1, p.segmentLength2, numDuplicates);
+  free(segment1);
+  free(segment2);
   return NULL;
 }
 
@@ -118,7 +137,7 @@ int main(int argc, char** argv) {
 
   // Get number of segments
   int numSegments = atoi(argv[1]);
-  printf("Number of segments: %d\n", numSegments);
+  if (allowPrinting) printf("Number of segments: %d\n", numSegments);
 
   // Initialize array
   const int INITIAL_LENGTH = 100;
@@ -137,7 +156,7 @@ int main(int argc, char** argv) {
       // Reallocate more memory to array
       arr = realloc(arr, sizeof(int) * currentLength * REALLOC_MULTIPLIER);
       currentLength *= REALLOC_MULTIPLIER;
-      printf("current size: %d\n", currentLength);
+      if (allowPrinting) printf("current size: %d\n", currentLength);
     }
 
     // Load the number into `num` and put it in array
@@ -153,7 +172,7 @@ int main(int argc, char** argv) {
   // Reallocate array so it only uses necessary size
   arr = realloc(arr, sizeof(int) * numElements);
 
-  printf("total # of numbers: %d\n", numElements);
+  if (allowPrinting) printf("total # of numbers: %d\n", numElements);
 
   // Calculate # of values per segment
   int valuesPerSegment;
@@ -163,11 +182,20 @@ int main(int argc, char** argv) {
     valuesPerSegment = (numElements / numSegments) + 1;
   }
 
-  printf("Values per segment: %d\n", valuesPerSegment);
+  if (allowPrinting) printf("Values per segment: %d\n", valuesPerSegment);
 
   // If # of values don't divide evenly, find leftover # of values
   int leftover = numElements - (numSegments - 1) * valuesPerSegment;
   int hasLeftover = leftover == valuesPerSegment ? 0 : 1;
+  
+  // If leftover is 0, it's easier to treat it as if we have
+  // one less segment (pitfall of required calculation of value per segment)
+  if (leftover == 0) {
+    numSegments -= 1;
+    hasLeftover = 0;
+  }
+
+  if (allowPrinting) printf("Leftover: %d\n", leftover);
 
   // Launch threads to sort
   pthread_t sortThreads[numSegments];
@@ -189,16 +217,27 @@ int main(int argc, char** argv) {
   }
 
   // Print array
-  printf("\nAfter sorting:\n");
-  for (int i = 0; i < numElements; i++) {
-    printf("arr[%d]: %d\n", i, arr[i]);
+  if (allowPrinting) {
+    printf("\nAfter sorting:\n");
+    for (int i = 0; i < numElements; i++) {
+      printf("arr[%d]: %d\n", i, arr[i]);
+    }
   }
 
   // Begin merging segments
   int currentNumSegments = numSegments;
   int currentSegmentLength = valuesPerSegment;
+  int irregularSegmentLength = leftover;
   while (currentNumSegments > 1) {
     int numMerges = currentNumSegments / 2;
+    int mergeLeftover = numElements - (currentNumSegments - 1) * currentSegmentLength;
+    if (allowPrinting) printf("merge leftover: %d\n", mergeLeftover);
+    if (mergeLeftover != currentSegmentLength) {
+      irregularSegmentLength = mergeLeftover;
+      hasLeftover = 1;
+    } else {
+      hasLeftover = 0;
+    }
 
     pthread_t mergeThreads[numMerges];
     merge_params mergeParams[numMerges];
@@ -207,17 +246,30 @@ int main(int argc, char** argv) {
     for (int i = 0; i < numMerges; i++) {
       // Create params to sort
       mergeParams[i].arr = arr;
-      mergeParams[i].segmentIndex1 = currentSegmentLength * (2 * i);
-      mergeParams[i].segmentIndex2 = currentSegmentLength * (2 * i + 1);
-      mergeParams[i].segmentLength1 = currentSegmentLength;
-      mergeParams[i].segmentLength2 =
-          currentSegmentLength;  // FIXME: check for leftover
 
-      printf(
-          "Merge params\n s1 index: %d\n s1 length: %d\n s2 index: %d\n s2 "
-          "length: %d\n",
-          mergeParams[i].segmentIndex1, mergeParams[i].segmentLength1,
-          mergeParams[i].segmentIndex2, mergeParams[i].segmentLength2);
+      int segment1Index = currentSegmentLength * (2 * i);
+      int segment2Index = currentSegmentLength * (2 * i + 1);
+      mergeParams[i].segmentIndex1 = segment1Index;
+      mergeParams[i].segmentIndex2 = segment2Index;
+      mergeParams[i].segmentLength1 = currentSegmentLength;
+
+      // If "rightmost" merge and we have irregular segment
+      if (segment2Index >= numElements - currentSegmentLength && hasLeftover) {
+         mergeParams[i].segmentLength2 = irregularSegmentLength;
+         irregularSegmentLength += currentSegmentLength;
+      } else {
+        // If not, segment length is standard
+        mergeParams[i].segmentLength2 =
+            currentSegmentLength;
+      }
+
+      if (allowPrinting) {
+        printf(
+            "Merge params\n s1 index: %d\n s1 length: %d\n s2 index: %d\n s2 "
+            "length: %d\n",
+            mergeParams[i].segmentIndex1, mergeParams[i].segmentLength1,
+            mergeParams[i].segmentIndex2, mergeParams[i].segmentLength2);
+      }
 
       // Launch thread
       pthread_create(&mergeThreads[i], NULL, mergeSegments,
@@ -233,14 +285,9 @@ int main(int argc, char** argv) {
 
     // Update segment length
     currentSegmentLength *= 2;
-
-    // printf("\nAfter merge round:\n");
-    // for (int i = 0; i < numElements; i++) {
-    //   printf("arr[%d]: %d\n", i, arr[i]);
-    // }
   }
 
-  // Print array
+  // Print array (required)
   for (int i = 0; i < numElements; i++) {
     printf("%d\n", arr[i]);
   }
