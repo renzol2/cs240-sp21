@@ -29,8 +29,8 @@ void wallet_change_resource(wallet_t *wallet, const char *resource, const int de
 }
 
 /**
- * Destroys a wallet, freeing all assoicated memory.
+ * Destroys a wallet, freeing all associated memory.
  */
-void wallet_destory(wallet_t *wallet) {
+void wallet_destroy(wallet_t *wallet) {
 
 }
