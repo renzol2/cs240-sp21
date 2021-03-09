@@ -158,7 +158,7 @@ int main() {
     printf("Yikes -- your wallet may not have that degree yet... :(\n");
   }
 
-  wallet_destory(&wallet);
+  wallet_destroy(&wallet);
 
 
   return 0;
