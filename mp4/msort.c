@@ -45,10 +45,14 @@ void* mergeSegments(void* ptr) {
   // Create temporary lists of each array
   int segment1[p.segmentLength1];
   int segment2[p.segmentLength2];
-  for (int i = 0; i < p.segmentLength1; i++)
+  for (int i = 0; i < p.segmentLength1; i++) {
+    printf("arr[%d]: %d\n", p.segmentIndex1 + i, p.arr[p.segmentIndex1 + i]);
     segment1[i] = p.arr[p.segmentIndex1 + i];
-  for (int i = 0; i < p.segmentLength2; i++)
+  }
+  for (int i = 0; i < p.segmentLength2; i++) {
+    printf("arr[%d]: %d\n", p.segmentIndex2 + i, p.arr[p.segmentIndex2 + i]);
     segment2[i] = p.arr[p.segmentIndex2 + i];
+  }
 
   // Merge two segments in the array
   int totalLength = p.segmentLength1 + p.segmentLength2;
@@ -59,11 +63,21 @@ void* mergeSegments(void* ptr) {
   for (int i = p.segmentIndex1; i < p.segmentIndex1 + totalLength; i++) {
     int a = segment1[seg1Index];
     int b = segment2[seg2Index];
+    // True if we've finished everything in segment 1
+    int endOfSegment1 = seg1Index == p.segmentLength1 ? 1 : 0;
+    // True if we've finished everything in segment 2
+    int endOfSegment2 = seg2Index == p.segmentLength2 ? 1 : 0;
 
-    // printf("a: %d, b: %d\n", a, b);
+    printf("a: %d, b: %d, s1i: %d, s2i: %d\n", a, b, seg1Index, seg2Index);
 
     // Compare the numbers
-    if (a < b) {
+    if (endOfSegment1) {
+      p.arr[i] = b;
+      seg2Index++;
+    } else if (endOfSegment2) {
+      p.arr[i] = a;
+      seg1Index++;
+    } else if (a < b) {
       p.arr[i] = a;
       seg1Index++;
     } else if (a > b) {
@@ -73,10 +87,19 @@ void* mergeSegments(void* ptr) {
       // TODO: count duplicates properly
       numDuplicates++;
       // Advance one of the lists
-      p.arr[i] = a;
-      seg1Index++;
+      if (endOfSegment1) {
+        p.arr[i] = b;
+        seg2Index++;
+      } else if (endOfSegment2) {
+        p.arr[i] = a;
+        seg1Index++;
+      } else {
+        // Default to segment 1
+        p.arr[i] = a;
+        seg1Index++;
+      }
     }
-    // printf("in merge, arr[%d]: %d\n", i, p.arr[i]);
+    printf("in merge, arr[%d]: %d\n", i, p.arr[i]);
   }
 
   fprintf(stderr, "Merged %d and %d elements with %d duplicates.\n",
@@ -105,7 +128,7 @@ int main(int argc, char** argv) {
 
   int scanResult = 1;
   int num;
-  int index;
+  int index = 0;
 
   // While before end of file
   while (scanResult != -1) {
@@ -211,15 +234,15 @@ int main(int argc, char** argv) {
     // Update segment length
     currentSegmentLength *= 2;
 
-    printf("\nAfter merge round:\n");
-    for (int i = 0; i < numElements; i++) {
-      printf("arr[%d]: %d\n", i, arr[i]);
-    }
+    // printf("\nAfter merge round:\n");
+    // for (int i = 0; i < numElements; i++) {
+    //   printf("arr[%d]: %d\n", i, arr[i]);
+    // }
   }
 
   // Print array
   for (int i = 0; i < numElements; i++) {
-    printf("arr[%d]: %d\n", i, arr[i]);
+    printf("%d\n", arr[i]);
   }
 
   free(arr);
