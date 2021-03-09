@@ -1,5 +1,7 @@
 #include <pthread.h>
 #include <stdio.h>
+#include <time.h>
+#include <stdlib.h>
 
 #include "lib/wallet.h"
 
@@ -8,7 +10,7 @@ wallet_t wallet;
 
 void *job_clover_patch() {
   int i = 0;
-  for (i = 0; i < 10; i++) {
+  for (i = 0; i < 100; i++) {
     wallet_change_resource(&wallet, "clover", 1); fprintf(stderr, "☘️");
     wallet_change_resource(&wallet, "clover", 1); fprintf(stderr, "☘️");
     wallet_change_resource(&wallet, "clover", 1); fprintf(stderr, "☘️");
@@ -17,6 +19,9 @@ void *job_clover_patch() {
     wallet_change_resource(&wallet, "clover", 1); fprintf(stderr, "☘️");
     wallet_change_resource(&wallet, "clover", 1); fprintf(stderr, "☘️");
     wallet_change_resource(&wallet, "clover", 1); fprintf(stderr, "☘️");
+    if (rand() % 10 == 0) {
+      wallet_change_resource(&wallet, "four-leaf-clover", 1); fprintf(stderr, "🍀");
+    }
     wallet_change_resource(&wallet, "clover", 1); fprintf(stderr, "☘️");
     wallet_change_resource(&wallet, "clover", 1); fprintf(stderr, "☘️");
     wallet_change_resource(&wallet, "clover", 1); fprintf(stderr, "☘️");
@@ -28,7 +33,7 @@ void *job_clover_patch() {
 
 void *job_orchard() {
   int i = 0;
-  for (i = 0; i < 11; i++) {
+  for (i = 0; i < 110; i++) {
     wallet_change_resource(&wallet, "green-apple", 1);
     fprintf(stderr, "🍏");
   }
@@ -38,7 +43,7 @@ void *job_orchard() {
 
 void *job_workshop() {
   int i = 0;
-  for (i = 0; i < 52; i++) {
+  for (i = 0; i < 520; i++) {
     wallet_change_resource(&wallet, "tools", 1);
     fprintf(stderr, "🧰");
 
@@ -53,7 +58,7 @@ void *job_workshop() {
 
 void *job_dna() {
   int i = 0;
-  for (i = 0; i < 175; i++) {
+  for (i = 0; i < 1750; i++) {
     wallet_change_resource(&wallet, "dna", 1);
     fprintf(stderr, "🧬");
   }
@@ -64,7 +69,7 @@ void *job_dna() {
 void *job_research_green() {
   // 📗 requires 1x🍏 1x🍀 10x☘️ 5x🧬
   int i = 0;
-  for (i = 0; i < 10; i++) {
+  for (i = 0; i < 100; i++) {
     wallet_change_resource(&wallet, "green-apple", -1);
     wallet_change_resource(&wallet, "four-leaf-clover", -1);
     wallet_change_resource(&wallet, "clover", -10);
@@ -78,7 +83,7 @@ void *job_research_green() {
 void *job_research_blue() {
   // 📘 requires 10x🧬 1x💎
   int i = 0;
-  for (i = 0; i < 10; i++) {
+  for (i = 0; i < 100; i++) {
     wallet_change_resource(&wallet, "dna", -10);
     wallet_change_resource(&wallet, "gem", -1);
     wallet_change_resource(&wallet, "blue-book", 1);
@@ -90,7 +95,7 @@ void *job_research_blue() {
 void *job_research_orange() {
   // 📙 requires 5x🧰 2x🧬
   int i = 0;
-  for (i = 0; i < 10; i++) {
+  for (i = 0; i < 100; i++) {
     wallet_change_resource(&wallet, "tools", -5);
     wallet_change_resource(&wallet, "dna", -2);
     wallet_change_resource(&wallet, "orange-book", 1);
@@ -102,7 +107,7 @@ void *job_research_orange() {
 void *job_combine_research() {
   // 📚 requires 1x📗, 1x📘, 1x📙
   int i = 0;
-  for (i = 0; i < 10; i++) {
+  for (i = 0; i < 100; i++) {
     wallet_change_resource(&wallet, "orange-book", -1);
     wallet_change_resource(&wallet, "blue-book", -1);
     wallet_change_resource(&wallet, "green-book", -1);
@@ -114,7 +119,7 @@ void *job_combine_research() {
 
 void *job_graduation() {
   // 🎓 requires 10x 📚 
-  wallet_change_resource(&wallet, "books", -10);
+  wallet_change_resource(&wallet, "books", -100);
   wallet_change_resource(&wallet, "degree!", 1);
   fprintf(stderr, "🎓");
   return NULL;
@@ -124,8 +129,10 @@ void *job_graduation() {
 
 int main() {
   wallet_init(&wallet);
+  srand (time(NULL));
 
   pthread_t tids[100];
+  fprintf(stderr, "Resources Generated: ");
   pthread_create(&tids[0], NULL, job_graduation, NULL);
   pthread_create(&tids[1], NULL, job_combine_research, NULL);
   pthread_create(&tids[2], NULL, job_research_blue, NULL);
@@ -145,6 +152,8 @@ int main() {
 
   if (wallet_get(&wallet, "degree!") == 1) {
     printf("Your wallet contains a degree! 🎉\n");
+    printf("- Extra 🧬: %d\n", wallet_get(&wallet, "dna"));
+    printf("- Extra 🍀: %d\n", wallet_get(&wallet, "four-leaf-clover"));
   } else {
     printf("Yikes -- your wallet may not have that degree yet... :(\n");
   }
@@ -154,4 +163,3 @@ int main() {
 
   return 0;
 }
-
