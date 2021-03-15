@@ -35,9 +35,7 @@ resource_t* get_resource(wallet_t *wallet, const char* resource) {
  * Returns the amount of a given `resource` in the given `wallet`.
  */
 int wallet_get(wallet_t *wallet, const char *resource) {
-  pthread_mutex_lock(&wallet->lookup_lock);
   resource_t* found_resource = get_resource(wallet, resource);
-  pthread_mutex_unlock(&wallet->lookup_lock);
 
   if (found_resource != NULL) {
     return found_resource->amount;
@@ -57,7 +55,6 @@ void wallet_change_resource(wallet_t *wallet, const char *resource,
                             const int delta) {
   pthread_mutex_lock(&wallet->lookup_lock);
   resource_t* r = get_resource(wallet, resource);
-  pthread_mutex_unlock(&wallet->lookup_lock);
   
   // If resource is not found, create resource in wallet
   if (r == NULL) {
@@ -71,13 +68,14 @@ void wallet_change_resource(wallet_t *wallet, const char *resource,
     strcpy(new_resource->name, resource);
     new_resource->amount = 0;
     new_resource->carryover = 0;
-    pthread_mutex_init(&new_resource->lock, NULL);
     
     r = new_resource;
   }
 
-  pthread_mutex_lock(&r->lock);
-  
+  pthread_mutex_unlock(&wallet->lookup_lock);
+
+  pthread_mutex_lock(&wallet->lookup_lock);
+
   // If taking resource, check that there's enough amount
   if (delta < 0) {
     int difference = r->amount + delta;
@@ -97,7 +95,10 @@ void wallet_change_resource(wallet_t *wallet, const char *resource,
 
     // Pay off some carryover if applicable
     int carryover = r->carryover;
-    if (carryover == 0) return;
+    if (carryover == 0) {
+      pthread_mutex_unlock(&wallet->lookup_lock);
+      return;
+    } 
 
     // If carryover is still more 
     if (carryover > r->amount) {
@@ -111,7 +112,7 @@ void wallet_change_resource(wallet_t *wallet, const char *resource,
     }
   }
 
-  pthread_mutex_unlock(&r->lock);
+  pthread_mutex_unlock(&wallet->lookup_lock);
 
 }
 

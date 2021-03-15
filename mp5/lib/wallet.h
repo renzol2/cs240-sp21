@@ -9,7 +9,6 @@ typedef struct resource_t_ {
   char* name;
   int amount;
   int carryover;
-  pthread_mutex_t lock;
 } resource_t;
 
 /**
