@@ -72,10 +72,6 @@ void wallet_change_resource(wallet_t *wallet, const char *resource,
     r = new_resource;
   }
 
-  pthread_mutex_unlock(&wallet->lookup_lock);
-
-  pthread_mutex_lock(&wallet->lookup_lock);
-
   // If taking resource, check that there's enough amount
   if (delta < 0) {
     int difference = r->amount + delta;

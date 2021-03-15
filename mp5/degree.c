@@ -128,38 +128,44 @@ void *job_graduation() {
 
 
 int main() {
-  wallet_init(&wallet);
-  srand (time(NULL));
+  const int NUM_ROUNDS = 1000;
+  int total_degrees = 0;
+  for (int i = 0; i < NUM_ROUNDS; i++) {
+    wallet_init(&wallet);
+    srand (time(NULL));
 
-  pthread_t tids[100];
-  fprintf(stderr, "Resources Generated: ");
-  pthread_create(&tids[0], NULL, job_graduation, NULL);
-  pthread_create(&tids[1], NULL, job_combine_research, NULL);
-  pthread_create(&tids[2], NULL, job_research_blue, NULL);
-  pthread_create(&tids[3], NULL, job_research_orange, NULL);
-  pthread_create(&tids[4], NULL, job_research_green, NULL);
-  pthread_create(&tids[5], NULL, job_dna, NULL);
-  pthread_create(&tids[6], NULL, job_workshop, NULL);
-  pthread_create(&tids[7], NULL, job_clover_patch, NULL);
-  pthread_create(&tids[8], NULL, job_orchard, NULL);
-  const int totalJobs = 9;
+    pthread_t tids[100];
+    fprintf(stderr, "Resources Generated: ");
+    pthread_create(&tids[0], NULL, job_graduation, NULL);
+    pthread_create(&tids[1], NULL, job_combine_research, NULL);
+    pthread_create(&tids[2], NULL, job_research_blue, NULL);
+    pthread_create(&tids[3], NULL, job_research_orange, NULL);
+    pthread_create(&tids[4], NULL, job_research_green, NULL);
+    pthread_create(&tids[5], NULL, job_dna, NULL);
+    pthread_create(&tids[6], NULL, job_workshop, NULL);
+    pthread_create(&tids[7], NULL, job_clover_patch, NULL);
+    pthread_create(&tids[8], NULL, job_orchard, NULL);
+    const int totalJobs = 9;
 
-  int i;
-  for (i = 0; i < totalJobs; i++) {
-    pthread_join(tids[i], NULL);
+    int i;
+    for (i = 0; i < totalJobs; i++) {
+      pthread_join(tids[i], NULL);
+    }
+    fprintf(stderr, "\n");
+
+    if (wallet_get(&wallet, "degree!") == 1) {
+      printf("Your wallet contains a degree! 🎉\n");
+      printf("- Extra 🧬: %d\n", wallet_get(&wallet, "dna"));
+      printf("- Extra 🍀: %d\n", wallet_get(&wallet, "four-leaf-clover"));
+      total_degrees++;
+    } else {
+      printf("Yikes -- your wallet may not have that degree yet... :(\n");
+    }
+
+    wallet_destroy(&wallet);
   }
-  fprintf(stderr, "\n");
-
-  if (wallet_get(&wallet, "degree!") == 1) {
-    printf("Your wallet contains a degree! 🎉\n");
-    printf("- Extra 🧬: %d\n", wallet_get(&wallet, "dna"));
-    printf("- Extra 🍀: %d\n", wallet_get(&wallet, "four-leaf-clover"));
-  } else {
-    printf("Yikes -- your wallet may not have that degree yet... :(\n");
-  }
-
-  wallet_destroy(&wallet);
-
+  
+  printf("Total degrees: %d\n", total_degrees);
 
   return 0;
 }
