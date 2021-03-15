@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+// 0 if using all resource locks, 1 if using only lookup lock
+int use_single_lock = 1;
 
 /**
  * Initializes an empty wallet.
@@ -18,12 +20,12 @@ void wallet_init(wallet_t *wallet) {
 /**
  * Gets resource with given name, or NULL if not found
  */
-resource_t* get_resource(wallet_t *wallet, const char* resource) {
+resource_t *get_resource(wallet_t *wallet, const char *resource) {
   for (int i = 0; i < wallet->wallet_size; i++) {
     // Check if there's a resource name equal to parameter
-    char *current_resource = wallet->resources[i].name;
+    const char *current_resource = wallet->resources[i].name;
 
-    // Return the resource's amount if they're the same
+    // Return the resource if they're the same
     if (strcmp(current_resource, resource) == 0) {
       return &wallet->resources[i];
     }
@@ -35,7 +37,9 @@ resource_t* get_resource(wallet_t *wallet, const char* resource) {
  * Returns the amount of a given `resource` in the given `wallet`.
  */
 int wallet_get(wallet_t *wallet, const char *resource) {
-  resource_t* found_resource = get_resource(wallet, resource);
+  pthread_mutex_lock(&wallet->lookup_lock);
+  resource_t *found_resource = get_resource(wallet, resource);
+  pthread_mutex_unlock(&wallet->lookup_lock);
 
   if (found_resource != NULL) {
     return found_resource->amount;
@@ -54,28 +58,35 @@ int wallet_get(wallet_t *wallet, const char *resource) {
 void wallet_change_resource(wallet_t *wallet, const char *resource,
                             const int delta) {
   pthread_mutex_lock(&wallet->lookup_lock);
-  resource_t* r = get_resource(wallet, resource);
-  
+  resource_t *r = get_resource(wallet, resource);
+
   // If resource is not found, create resource in wallet
   if (r == NULL) {
     // Update size and allocate space
     wallet->wallet_size += 1;
-    wallet->resources = realloc(wallet->resources, sizeof(resource_t) * wallet->wallet_size);
+    wallet->resources =
+        realloc(wallet->resources, sizeof(resource_t) * wallet->wallet_size);
 
     // Initialize new resource
-    resource_t* new_resource = &wallet->resources[wallet->wallet_size - 1];
-    new_resource->name = malloc(sizeof(char) * strlen(resource));
-    strcpy(new_resource->name, resource);
+    resource_t *new_resource = &wallet->resources[wallet->wallet_size - 1];
+    new_resource->name = resource;
     new_resource->amount = 0;
     new_resource->carryover = 0;
-    
+
+    pthread_mutex_init(&new_resource->lock, NULL);
+
     r = new_resource;
   }
+
+  if (!use_single_lock) pthread_mutex_unlock(&wallet->lookup_lock);
+
+  if (!use_single_lock) pthread_mutex_lock(&r->lock);
 
   // If taking resource, check that there's enough amount
   if (delta < 0) {
     int difference = r->amount + delta;
-    // If there's too much requested, only take possible amount and store carryover
+    // If there's too much requested, only take possible amount and store
+    // carryover
     if (difference < 0) {
       // Difference is negative so we * -1 to get a positive value
       r->carryover += -difference;
@@ -92,11 +103,15 @@ void wallet_change_resource(wallet_t *wallet, const char *resource,
     // Pay off some carryover if applicable
     int carryover = r->carryover;
     if (carryover == 0) {
-      pthread_mutex_unlock(&wallet->lookup_lock);
+      if (use_single_lock) {
+        pthread_mutex_unlock(&wallet->lookup_lock);
+      } else {
+        pthread_mutex_unlock(&r->lock);
+      }
       return;
-    } 
+    }
 
-    // If carryover is still more 
+    // If carryover is still more
     if (carryover > r->amount) {
       int new_carryover = carryover - r->amount;
       r->carryover = new_carryover;
@@ -108,17 +123,20 @@ void wallet_change_resource(wallet_t *wallet, const char *resource,
     }
   }
 
-  pthread_mutex_unlock(&wallet->lookup_lock);
-
+  if (use_single_lock) {
+    pthread_mutex_unlock(&wallet->lookup_lock);
+  } else {
+    pthread_mutex_unlock(&r->lock);
+  }
 }
 
 /**
  * Destroys a wallet, freeing all associated memory.
  */
 void wallet_destroy(wallet_t *wallet) {
-  for (int i = 0; i < wallet->wallet_size; i++) {
-    free(wallet->resources[i].name);
-  }
+  // for (int i = 0; i < wallet->wallet_size; i++) {
+  //   free(wallet->resources[i].name);
+  // }
   free(wallet->resources);
   wallet->wallet_size = 0;
 }

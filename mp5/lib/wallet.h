@@ -6,9 +6,10 @@
  * Resource struct containing a resource name and associated amount
  */
 typedef struct resource_t_ {
-  char* name;
+  const char* name;
   int amount;
   int carryover;
+  pthread_mutex_t lock;
 } resource_t;
 
 /**
