@@ -69,7 +69,7 @@ int main(int argc, char *argv[]) {
 
   // Create file to put GIF in
   FILE* gifFile = fopen(argv[2], "w");
-  fwrite(uiuc->data, sizeof(uiuc->data), uiuc->len, gifFile);
+  fwrite(uiuc->data, sizeof(char), uiuc->len, gifFile);
   fclose(gifFile);
 
   PNGChunk_free(uiuc);
