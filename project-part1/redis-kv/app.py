@@ -11,7 +11,6 @@ def put_key(key):
   # Get value
   value = request.data.decode('utf-8')
   
-  # TODO: Insert value at key, checking version too
   # Insert value into state
   version = 1
 
