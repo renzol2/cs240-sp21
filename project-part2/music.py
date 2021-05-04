@@ -36,7 +36,7 @@ for v in range(1, song_length + 1):
   new_note.duration = duration.Duration(dur)
 
   if value.get('offset') is not None:
-    new_note.offset = values['offset']
+    new_note.offset = value['offset']
   else:
     new_note.offset = current_offset
     current_offset += dur
