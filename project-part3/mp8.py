@@ -3,7 +3,6 @@ mp8_server = Blueprint("mp8_server", __name__)
 
 store = {}
 
-
 # PUT
 @mp8_server.route('/<key>', methods=["PUT"])
 def put(key):
