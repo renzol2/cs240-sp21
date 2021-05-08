@@ -8,13 +8,13 @@ artwork_server = Blueprint("artwork_server", __name__)
 # POST
 @artwork_server.route('/<key>', methods=["POST"])
 def post_image(key):
-  # citation: https://pillow.readthedocs.io/en/stable/handbook/tutorial.html#reading-from-binary-data
   img = Image.open(io.BytesIO(request.data))
 
-  # citation: https://pillow.readthedocs.io/en/stable/handbook/tutorial.html#enhancing-images
+  # Enhance image
   processed = ImageEnhance.Sharpness(img).enhance(20000)
   processed.save('file.png')
 
+  # Send image to state
   b = io.BytesIO()
   processed.save(b, format='png')
   contents = b.getvalue()
@@ -23,14 +23,3 @@ def post_image(key):
 
   return send_file('file.png'), 200
 
-def manual_put(store, key, image_data):
-  if key not in store:
-    store[key] = []
-    version = 1
-  else:
-    version = len(store[key]) + 1
-
-  store[key].append({
-    "version": version,
-    "value": image_data  # insert image; does it work?
-  })
