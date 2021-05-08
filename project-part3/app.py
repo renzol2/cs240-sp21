@@ -1,4 +1,5 @@
 from flask import Flask
+import io
 app = Flask(__name__)
 
 
@@ -9,21 +10,17 @@ from artwork import artwork_server
 app.register_blueprint(artwork_server)
 
 
-
-
-
-
-
-
-
-
 # POST
 @app.route('/<key>', methods=["POST"])
 def post_image(key):
-  
+  # citation: https://pillow.readthedocs.io/en/stable/handbook/tutorial.html#reading-from-binary-data
+  img = Image.open(io.BytesIO(request.data))
 
+  # citation: https://pillow.readthedocs.io/en/stable/handbook/tutorial.html#enhancing-images
+  processed = ImageEnhance.Contrast(img).enhance(1.8)
+  processed.save("ret.png")
 
-  return f'', 500
+  return send_file("ret.png"), 200
 
 
 
