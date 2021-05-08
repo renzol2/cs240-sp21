@@ -15,12 +15,11 @@ def post_image(key):
   processed = ImageEnhance.Sharpness(img).enhance(20000)
   processed.save('file.png')
 
-  # TODO: save the file in the state server
   b = io.BytesIO()
-  img.save(b, format='png')
+  processed.save(b, format='png')
   contents = b.getvalue()
-  r = requests.put('http://localhost:5000/' + key, data=str(contents))
-  print(r)
+  r = requests.put('http://localhost:5000/' + key, data=contents)
+  print(r.content)
 
   return send_file('file.png'), 200
 

@@ -1,4 +1,6 @@
-from flask import Blueprint, render_template, request, jsonify
+from flask import Blueprint, render_template, request, jsonify, send_file
+import io
+from PIL import Image
 mp8_server = Blueprint("mp8_server", __name__)
 
 store = {}
@@ -14,7 +16,7 @@ def put(key):
 
   store[key].append({
     "version": version,
-    "value": request.data.decode("utf-8")
+    "value": request.data
   })
 
   return f"Key `{key}` added as v{version}.", 200
@@ -27,7 +29,10 @@ def get_key(key):
     return f"Key `{key}` not found.", 404
 
   index = len(store[key]) - 1
-  return jsonify( store[key][index] ), 200
+  image_bytes = store[key][index]['value']
+  img = Image.open(io.BytesIO(image_bytes))
+  img.save('get.png')
+  return send_file('get.png'), 200
 
 
 # GET /<key>/<version>
